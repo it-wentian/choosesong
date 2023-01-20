@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>点歌</title>
+  </head>
+
+  <body>
+    <script>
+      let voices = [];
+      let audio = new Audio();
+      voices = speechSynthesis
+        .getVoices()
+        .filter(i => i.lang.includes("zh-CN"))[6];
+      let speech = new SpeechSynthesisUtterance("");
+      function textToSpeech(text) {
+        speech = new SpeechSynthesisUtterance();
+        voices = speechSynthesis
+          .getVoices()
+          .filter(i => i.lang.includes("zh-CN"));
+        speech.text = text;
+        speech.voice = voices[6];
+        speechSynthesis.speak(speech);
+      }
+
+      let newRecognition =
+        new webkitSpeechRecognition() || new SpeechRecognition();
+      (newRecognition.lang = "cmn-Hans-CN"), "en-US"; //
+
+      newRecognition.onresult = function(e) {
+        let result = e.results[0][0].transcript;
+        let string = result;
+        let reg = /来一首/gi;
+        if (reg.test(string)) {
+          string = string.replace("来一首", "");
+          audio.pause();
+          chooseSong(`#${string}`);
+        }
+      };
+      newRecognition.continuous = false;
+      newRecognition.start();
+      newRecognition.addEventListener("end", newRecognition.start);
+
+      function chooseSong(songTitle) {
+        let reg = /^#(.+)/i;
+        let flag = reg.test(songTitle);
+        if (!flag) {
+          return;
+        }
+        songTitle = songTitle.split("#")[1];
+        let url = `https://v.api.aa1.cn/api/kugou/?msg=${songTitle}&type=2`;
+        fetch(url)
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(json) {
+            if (json.PlayLink) {
+              audio.src = json.PlayLink;
+              audio.volume = 0.5;
+              audio.play();
+              return;
+            }
+            textToSpeech("您点的歌曲没找到哦,可以换一首哦");
+          })
+          .catch(function(ex) {
+            console.log("parsing failed", ex);
+          });
+      }
+    </script>
+  </body>
+</html>
